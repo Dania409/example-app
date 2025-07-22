@@ -11,27 +11,40 @@ pipeline {
                 git url: 'https://github.com/Dania409/example-app.git'
             }
         }
+
         stage('Composer Install') {
             steps {
                 sh 'docker run --rm -v $PWD:/app -v $COMPOSER_CACHE_DIR:/tmp -w /app composer:latest composer install'
             }
         }
+
         stage('Copy .env & Generate Key') {
             steps {
                 sh 'cp .env.example .env || true'
                 sh 'docker-compose run --rm app php artisan key:generate'
             }
         }
+
+        // ✅ Новый шаг: исправление прав на storage
+        stage('Fix Permissions') {
+            steps {
+                sh 'sudo chown -R www-data:www-data storage bootstrap/cache'
+                sh 'sudo chmod -R 775 storage bootstrap/cache'
+            }
+        }
+
         stage('Run Migrations') {
             steps {
                 sh 'docker-compose run --rm app php artisan migrate --force'
             }
         }
+
         stage('Run Laravel Tests') {
             steps {
                 sh 'docker-compose run --rm app php artisan test'
             }
         }
+
         stage('Build & Up') {
             steps {
                 sh 'docker-compose down'
