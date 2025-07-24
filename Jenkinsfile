@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Fix Workspace Permissions Before Checkout') {
             steps {
-                // Важно: если у Jenkins есть sudo-доступ, иначе выполните вручную
+                // Важно: если Jenkins имеет sudo-доступ, иначе исправьте права вручную
                 sh 'sudo chown -R jenkins:jenkins $WORKSPACE || true'
                 sh 'sudo chmod -R u+rwX $WORKSPACE || true'
             }
@@ -26,9 +26,27 @@ pipeline {
             }
         }
 
-        stage('Copy .env and Generate Key') {
+        stage('Copy .env') {
             steps {
                 sh 'cp .env.example .env || true'
+            }
+        }
+
+        stage('Remove SQLite Database If Exists') {
+            steps {
+                sh 'rm -f database/database.sqlite || true'
+            }
+        }
+        
+        stage('Clear Laravel Config Cache') {
+            steps {
+                sh 'docker-compose run --rm app php artisan config:clear'
+                sh 'docker-compose run --rm app php artisan cache:clear'
+            }
+        }
+
+        stage('Generate Application Key') {
+            steps {
                 sh 'docker-compose run --rm app php artisan key:generate'
             }
         }
@@ -45,23 +63,22 @@ pipeline {
             }
         }
 
-        stage('Database Wait') {
+        stage('Wait for MySQL') {
             steps {
-                // Ждать, пока база полностью будет доступна из контейнера приложения
                 sh '''
                 for i in {1..30}; do
-                    if docker-compose exec -T db mysqladmin ping -h"db" --silent; then
-                        echo "MySQL is up!"
-                        break
-                    fi
-                    echo "Waiting for MySQL..."
-                    sleep 2
+                  if docker-compose exec -T db mysqladmin ping -h"db" --silent; then
+                    echo "MySQL is up!"
+                    break
+                  fi
+                  echo "Waiting for MySQL..."
+                  sleep 2
                 done
                 '''
             }
         }
 
-        stage('Migrate Database') {
+        stage('Run Migrations') {
             steps {
                 sh 'docker-compose run --rm app php artisan migrate --force'
             }
@@ -73,7 +90,7 @@ pipeline {
             }
         }
 
-        stage('Up Application') {
+        stage('Start Application') {
             steps {
                 sh 'docker-compose down || true'
                 sh 'docker-compose up --build -d'
@@ -86,7 +103,7 @@ pipeline {
             echo '✅ Проект успешно развернут и доступен!'
         }
         failure {
-            echo '❌ Ошибка при развертывании. Проверяйте логи.'
+            echo '❌ Ошибка при развертывании. Проверьте логи.'
         }
     }
 }
