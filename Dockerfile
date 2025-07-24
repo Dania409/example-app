@@ -15,4 +15,6 @@ RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /e
 RUN chown -R www-data:www-data /var/www/html
 
 # Рабочая директория
+COPY . /var/www/html
 WORKDIR /var/www/html
+RUN composer install --no-dev --optimize-autoloader
