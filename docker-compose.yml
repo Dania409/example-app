@@ -29,6 +29,7 @@ services:
 
   phpmyadmin:
     image: php/phpmyadmin
+    image: phpmyadmin/phpmyadmin
     container_name: phpmy
     restart: always
     depends_on:
