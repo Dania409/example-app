@@ -15,7 +15,7 @@ services:
 
   db:
     image: mysql:8.0
-    container_name: mysql_db_3
+    container_name: mysql_db_4
     restart: always
     environment:
       MYSQL_DATABASE: laravel_db
