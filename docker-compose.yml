@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: example-app
+    container_name: example-app_9
     volumes:
       - ./:/var/www/html
     ports:
@@ -15,7 +15,7 @@ services:
 
   db:
     image: mysql:8.0
-    container_name: mysql_
+    container_name: mysql_df
     restart: always
     environment:
       MYSQL_DATABASE: laravel_db
