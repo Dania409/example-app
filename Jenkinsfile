@@ -14,7 +14,7 @@ pipeline {
 
         stage('Composer install (Docker)') {
             steps {
-                sh docker run --rm -v "/var/lib/jenkins/workspace/Daniil pipeline:/app" -v /var/lib/jenkins/.composer:/tmp -w /app composer:latest composer install
+                sh 'docker run --rm -v "/var/lib/jenkins/workspace/Daniil pipeline:/app" -v /var/lib/jenkins/.composer:/tmp -w /app composer:latest composer install'
             }
         }
 
