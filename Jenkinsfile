@@ -2,55 +2,61 @@ pipeline {
     agent any
 
     environment {
-        // Пример — укажите ваши переменные окружения для deploy
-        DEPLOY_SERVER = 'adm-dev@89.169.189.111'
-        APP_DIR = '/var/www/example-app'
+        COMPOSER_CACHE_DIR = "$HOME/.composer"
     }
 
     stages {
         stage('Клонирование репозитория') {
             steps {
-                git branch: 'master', url: 'https://github.com/Dania409/docker-project'
+                git branch: 'master', url: 'https://github.com/Dania409/example-app.git'
             }
         }
-        stage('Установка зависимостей') {
+
+        stage('Composer install (Docker)') {
             steps {
-                sh 'composer install --no-interaction --prefer-dist'
+                sh 'docker run --rm -v $PWD:/app -v $COMPOSER_CACHE_DIR:/tmp -w /app composer:latest composer install'
+            }
+        }
+
+        stage('Копия .env и генерация ключа Laravel') {
+            steps {
                 sh 'cp .env.example .env || true'
-                sh 'php artisan key:generate'
+                sh 'docker-compose run --rm app php artisan key:generate'
             }
         }
-        stage('Тестирование') {
+
+        stage('Права на storage и cache') {
             steps {
-                sh 'php artisan test --env=testing || true' // тесты опциональны
+                sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache"'
             }
         }
-        stage('Сборка фронтенда (если нужно)') {
+
+        stage('Миграции') {
             steps {
-                sh 'npm ci'
-                sh 'npm run build || npm run prod || true'
+                sh 'docker-compose run --rm app php artisan migrate --force'
             }
         }
-        stage('Деплой на сервер') {
+
+        stage('Тесты') {
             steps {
-                // Используйте SSH credentials для безопасной деплоя
-                sshagent(['jenkins-ssh-key']) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
-                        cd ${APP_DIR} &&
-                        git pull &&
-                        composer install --no-dev --prefer-dist &&
-                        php artisan migrate --force
-                    '
-                    """
-                }
+                sh 'docker-compose run --rm app php artisan test'
+            }
+        }
+
+        stage('Сборка и запуск приложения') {
+            steps {
+                sh 'docker-compose down'
+                sh 'docker-compose up --build -d'
             }
         }
     }
+
     post {
+        success {
+            echo '✅ Проект успешно собран, протестирован и запущен через docker-compose!'
+        }
         failure {
-            // Здесь добавьте уведомления по почте или Slack (по необходимости)
-            echo 'Деплой завершился с ошибкой!'
+            echo '❌ Ошибка на этапе сборки или запуска!'
         }
     }
 }
