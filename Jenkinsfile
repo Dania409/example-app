@@ -8,7 +8,6 @@ pipeline {
     stages {
         stage('Fix Workspace Permissions Before Checkout') {
             steps {
-                // Важно: если Jenkins имеет sudo-доступ, иначе исправьте права вручную
                 sh 'sudo chown -R jenkins:jenkins $WORKSPACE || true'
                 sh 'sudo chmod -R u+rwX $WORKSPACE || true'
             }
@@ -37,7 +36,7 @@ pipeline {
                 sh 'rm -f database/database.sqlite || true'
             }
         }
-        
+
         stage('Clear Laravel Config Cache') {
             steps {
                 sh 'docker-compose run --rm app php artisan config:clear'
