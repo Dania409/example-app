@@ -27,6 +27,11 @@ pipeline {
                 sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache"'
             }
         }
+        stage('Database Permissions') {
+            steps {
+                sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data database && chmod -R 775 database"'
+            }
+        }
         stage('Migrate Database') {
             steps {
                 sh 'docker-compose run --rm app php artisan migrate --force'
