@@ -18,21 +18,41 @@ pipeline {
                 }
             }
         }
-        stage('Docker Compose Up') {
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker-compose build'
+            }
+        }
+        stage('Start Services') {
             steps {
                 sh 'docker-compose pull'
                 sh 'docker-compose up -d'
             }
         }
-        stage('Composer Install & Key Generate') {
+        stage('Wait for MySQL') {
             steps {
-                sh 'docker-compose exec -T app composer install'
+                // Просто sleep 15: для продакшна лучше ждать порт,, например через wait-for-it или аналог
+                sh 'sleep 15'
+            }
+        }
+        stage('Composer Install') {
+            steps {
+                sh 'docker-compose exec -T app composer install --no-interaction --prefer-dist'
+            }
+        }
+        stage('Set Permissions') {
+            steps {
+                sh 'docker-compose exec -T app chmod -R 775 storage bootstrap/cache'
+            }
+        }
+        stage('Artisan Key Generate') {
+            steps {
                 sh 'docker-compose exec -T app php artisan key:generate'
             }
         }
         stage('Migrate DB') {
             steps {
-                sh 'docker-compose exec -T app php artisan migrate'
+                sh 'docker-compose exec -T app php artisan migrate --force'
             }
         }
         stage('Test') {
@@ -46,7 +66,10 @@ pipeline {
             sh 'docker-compose ps'
         }
         cleanup {
-            sh 'docker-compose down -v'
+            script {
+                // Можно не включать, если контейнеры должны оставаться после билда
+                // sh 'docker-compose down -v'
+            }
         }
     }
 }
