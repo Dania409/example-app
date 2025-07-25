@@ -5,10 +5,6 @@ RUN apt-get update && apt-get install -y \
     zip unzip libzip-dev libpng-dev libonig-dev libxml2-dev curl git \
     && docker-php-ext-install pdo_mysql zip
 
-# Установка Composer (глобально)
-RUN wget https://getcomposer.org/download/latest-stable/composer.phar -O /usr/local/bin/composer && \
-    chmod +x /usr/local/bin/composer
-
 # Включаем mod_rewrite
 RUN a2enmod rewrite
 

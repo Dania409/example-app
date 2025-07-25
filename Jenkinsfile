@@ -35,11 +35,6 @@ pipeline {
                 // или вместо sleep можно использовать скрипт ожидания, например wait-for-it
             }
         }
-        stage('Composer Install') {
-            steps {
-                sh 'docker-compose exec -T app composer install --no-interaction --prefer-dist'
-            }
-        }
         stage('Set Permissions') {
             steps {
                 sh 'docker-compose exec -T app chmod -R 775 storage bootstrap/cache'
