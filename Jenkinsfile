@@ -1,95 +1,52 @@
 pipeline {
     agent any
-
     environment {
-        COMPOSER_CACHE_DIR = "$HOME/.composer"
+        COMPOSE_FILE = 'docker-compose.yml'
     }
-
     stages {
-        stage('Fix Workspace Permissions Before Checkout') {
-            steps {
-                sh 'sudo chown -R jenkins:jenkins $WORKSPACE || true'
-                sh 'sudo chmod -R u+rwX $WORKSPACE || true'
-            }
-        }
-
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/Dania409/example-app.git'
+                git url: 'https://github.com/Dania409/example-app.git'
             }
         }
-
-        stage('Composer Install') {
-            steps {
-                sh 'docker run --rm -v "$PWD:/app" -v "$COMPOSER_CACHE_DIR:/tmp" -w /app composer:latest composer install'
-            }
-        }
-
         stage('Copy .env') {
             steps {
-                sh 'cp .env.example .env || true'
+                script {
+                    if (!fileExists('.env')) {
+                        sh 'cp .env.example .env'
+                    }
+                }
             }
         }
-
-        stage('Generate Application Key') {
+        stage('Docker Compose Up') {
             steps {
-                sh 'docker-compose run --rm app php artisan key:generate'
+                sh 'docker-compose pull'
+                sh 'docker-compose up -d'
             }
         }
-
-        stage('Set Storage and Bootstrap Permissions') {
+        stage('Composer Install & Key Generate') {
             steps {
-                sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache"'
+                sh 'docker-compose exec -T app composer install'
+                sh 'docker-compose exec -T app php artisan key:generate'
             }
         }
-
-        stage('Set Database Permissions') {
+        stage('Migrate DB') {
             steps {
-                sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data database && chmod -R 775 database"'
+                sh 'docker-compose exec -T app php artisan migrate'
             }
         }
-
-        stage('Wait for MySQL') {
+        stage('Test') {
             steps {
-                sh '''
-                for i in {1..30}; do
-                  if docker-compose exec -T db mysqladmin ping -h"db" --silent; then
-                    echo "MySQL is up!"
-                    break
-                  fi
-                  echo "Waiting for MySQL..."
-                  sleep 2
-                done
-                '''
-            }
-        }
-
-        stage('Run Migrations') {
-            steps {
-                sh 'docker-compose run --rm app php artisan migrate --force'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh 'docker-compose run --rm app php artisan test'
-            }
-        }
-
-        stage('Start Application') {
-            steps {
-                sh 'docker-compose down || true'
-                sh 'docker-compose up --build -d'
+                sh 'docker-compose exec -T app php artisan test --env=testing'
             }
         }
     }
-
     post {
-        success {
-            echo '✅ Проект успешно развернут и доступен!'
+        always {
+            sh 'docker-compose ps'
         }
-        failure {
-            echo '❌ Ошибка при развертывании. Проверьте логи.'
+        cleanup {
+            sh 'docker-compose down -v'
         }
     }
 }
