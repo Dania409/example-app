@@ -31,12 +31,6 @@ pipeline {
             }
         }
 
-        stage('Remove SQLite Database If Exists') {
-            steps {
-                sh 'rm -f database/database.sqlite || true'
-            }
-        }
-
         stage('Clear Laravel Config Cache') {
             steps {
                 sh 'docker-compose run --rm app php artisan config:clear'
