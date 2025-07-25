@@ -31,8 +31,8 @@ pipeline {
         }
         stage('Wait for MySQL') {
             steps {
-                // Просто sleep 15: для продакшна лучше ждать порт,, например через wait-for-it или аналог
                 sh 'sleep 15'
+                // или вместо sleep можно использовать скрипт ожидания, например wait-for-it
             }
         }
         stage('Composer Install') {
@@ -63,13 +63,14 @@ pipeline {
     }
     post {
         always {
+            // Эти команды будут выполняться В ЛЮБОМ случае — после сборки независимо от результата
             sh 'docker-compose ps'
+            sh 'docker-compose down -v'
         }
-        cleanup {
-            script {
-                // Можно не включать, если контейнеры должны оставаться после билда
-                // sh 'docker-compose down -v'
-            }
-        }
+        // Можно добавить и другие дефолтные блоки:
+        // success { ... }
+        // failure { ... }
+        // unstable { ... }
+        // changed { ... }
     }
 }
