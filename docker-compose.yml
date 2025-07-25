@@ -15,7 +15,7 @@ services:
 
   db:
     image: mysql:8.0
-    container_name: mysql-db
+    container_name: sql
     restart: always
     environment:
       MYSQL_DATABASE: laravel_db
@@ -29,7 +29,7 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin
+    container_name: phpmy
     restart: always
     depends_on:
       - db
