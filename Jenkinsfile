@@ -40,11 +40,6 @@ pipeline {
                 sh 'docker-compose exec -T app chmod -R 775 storage bootstrap/cache'
             }
         }
-        stage('Artisan Key Generate') {
-            steps {
-                sh 'docker-compose exec -T app php artisan key:generate'
-            }
-        }
         stage('Migrate DB') {
             steps {
                 sh 'docker-compose exec -T app php artisan migrate --force'
