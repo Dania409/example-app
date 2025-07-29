@@ -1,66 +1,101 @@
 pipeline {
     agent any
+
     environment {
-        COMPOSE_FILE = 'docker-compose.yml'
+        COMPOSER_CACHE_DIR = "$HOME/.composer"
     }
+
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/Dania409/example-app.git'
+                git branch: 'master', url: 'https://github.com/Dania409/example-app.git'
             }
         }
-        stage('Copy .env') {
+
+        stage('Composer Install') {
             steps {
-                script {
-                    if (!fileExists('.env')) {
-                        sh 'cp .env.example .env'
-                    }
-                }
+                sh 'docker run --rm -v "$PWD:/app" -v "$COMPOSER_CACHE_DIR:/tmp" -w /app composer:latest composer install'
             }
         }
-        stage('Build Docker Image') {
+
+        stage('Copy .env / Настроить окружение') {
             steps {
-                sh 'docker-compose build'
+                sh 'cp .env.example .env || true'
             }
         }
-        stage('Start Services') {
+
+        stage('Удалить старую SQLite-базу (если была)') {
             steps {
-                sh 'docker-compose pull'
-                sh 'docker-compose up -d'
+                sh 'rm -f database/database.sqlite || true'
             }
         }
+
+        stage('Clear Laravel Config Cache') {
+            steps {
+                sh 'docker-compose run --rm app php artisan config:clear'
+                sh 'docker-compose run --rm app php artisan cache:clear'
+            }
+        }
+
+        stage('Generate Application Key') {
+            steps {
+                sh 'docker-compose run --rm app php artisan key:generate'
+            }
+        }
+
+        stage('Set Storage and Bootstrap Permissions') {
+            steps {
+                sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache"'
+            }
+        }
+
+        stage('Set Database Permissions') {
+            steps {
+                sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data database && chmod -R 775 database"'
+            }
+        }
+
         stage('Wait for MySQL') {
             steps {
-                sh 'sleep 15'
-                // или вместо sleep можно использовать скрипт ожидания, например wait-for-it
+                sh '''
+                for i in {1..30}; do
+                  if docker-compose exec -T db mysqladmin ping -h"db" --silent; then
+                    echo "MySQL is up!"
+                    break
+                  fi
+                  echo "Waiting for MySQL..."
+                  sleep 2
+                done
+                '''
             }
         }
-        stage('Set Permissions') {
+
+        stage('Run Migrations') {
             steps {
-                sh 'docker-compose exec -T app chmod -R 775 storage bootstrap/cache'
+                sh 'docker-compose run --rm app php artisan migrate --force'
             }
         }
-        stage('Migrate DB') {
+
+        stage('Run Tests') {
             steps {
-                sh 'docker-compose exec -T app php artisan migrate --force'
+                sh 'docker-compose run --rm app php artisan test'
             }
         }
-        stage('Test') {
+
+        stage('Start Application') {
             steps {
-                sh 'docker-compose exec -T app php artisan test --env=testing'
+                sh 'docker-compose down || true'
+                sh 'docker-compose up --build -d'
             }
         }
     }
+
     post {
-        always {
-            // Эти команды будут выполняться В ЛЮБОМ случае — после сборки независимо от результата
-            sh 'docker-compose ps'
-            sh 'docker-compose down -v'
+        success {
+            echo '✅ Приложение успешно развернуто и доступно на http://localhost:8083'
         }
-        // Можно добавить и другие дефолтные блоки:
-        // success { ... }
-        // failure { ... }
-        // unstable { ... }
-        // changed { ... }
+        failure {
+            echo '❌ Ошибка при развертывании. Смотрите логи пайплайна.'
+        }
     }
 }
