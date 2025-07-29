@@ -70,7 +70,7 @@ pipeline {
                     sh '''
                     tries=60
                     while [ $tries -gt 0 ]; do
-                        if docker-compose exec -T db mysqladmin ping -h"db" -uroot -psecret --silent; then
+                        if docker-compose exec -T db laravel_db ping -h"db" -ularavel_user -psecret --silent; then
                             echo "✅ MySQL уже готов!"
                             exit 0
                         fi
