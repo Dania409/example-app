@@ -6,11 +6,11 @@ pipeline {
     }
 
     stages {
-
         stage('Fix workspace permissions before checkout') {
             steps {
-               sh 'sudo chown -R jenkins:jenkins $WORKSPACE || true'
-               sh 'sudo chmod -R u+rwX $WORKSPACE || true'
+                // Если у Jenkins нет sudo — эту часть можно убрать, а права выдать вручную
+                sh 'sudo chown -R jenkins:jenkins $WORKSPACE || true'
+                sh 'sudo chmod -R u+rwX $WORKSPACE || true'
             }
         }
 
@@ -63,18 +63,25 @@ pipeline {
             }
         }
 
+        // === Блок надёжного ожидания MySQL ===
         stage('Wait for MySQL') {
             steps {
-                sh '''
-                for i in {1..30}; do
-                  if docker-compose exec -T db mysqladmin ping -h"db" --silent; then
-                    echo "MySQL is up!"
-                    break
-                  fi
-                  echo "Waiting for MySQL..."
-                  sleep 2
-                done
-                '''
+                script {
+                    sh '''
+                    tries=60
+                    while [ $tries -gt 0 ]; do
+                        if docker-compose exec -T db mysqladmin ping -h"db" -uroot -psecret --silent; then
+                            echo "✅ MySQL уже готов!"
+                            exit 0
+                        fi
+                        echo "⏳ Ждем MySQL ($tries попыток осталось)..."
+                        sleep 2
+                        tries=$((tries - 1))
+                    done
+                    echo "❌ Не удалось дождаться запуска MySQL в docker-compose."
+                    exit 1
+                    '''
+                }
             }
         }
 
