@@ -38,13 +38,6 @@ pipeline {
             }
         }
 
-        stage('Clear Laravel Config Cache') {
-            steps {
-                sh 'docker-compose run --rm app php artisan config:clear'
-                sh 'docker-compose run --rm app php artisan cache:clear'
-            }
-        }
-
         stage('Generate Application Key') {
             steps {
                 sh 'docker-compose run --rm app php artisan key:generate'
