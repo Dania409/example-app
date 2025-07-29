@@ -6,6 +6,14 @@ pipeline {
     }
 
     stages {
+
+        stage('Fix workspace permissions before checkout') {
+            steps {
+               sh 'sudo chown -R jenkins:jenkins $WORKSPACE || true'
+               sh 'sudo chmod -R u+rwX $WORKSPACE || true'
+            }
+        }
+
         stage('Checkout') {
             steps {
                 git branch: 'master', url: 'https://github.com/Dania409/example-app.git'
