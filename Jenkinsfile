@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        // Вы можете добавить нужные переменные окружения
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -23,12 +19,7 @@ pipeline {
                 sh 'php artisan test || vendor/bin/phpunit'
             }
         }
-        // Если нужен деплой — добавьте соответствующий шаг
-        //stage('Deploy') {
-        //    steps {
-        //        // Ваши команды деплоя
-        //    }
-        //}
+        // Можно добавить стадию деплоя при необходимости
     }
     post {
         failure {
@@ -36,4 +27,5 @@ pipeline {
         }
     }
 }
+      
     
