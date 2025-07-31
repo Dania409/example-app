@@ -1,32 +1,17 @@
 pipeline {
     agent any
-
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'master', url: 'https://github.com/Dania409/example-app'
             }
         }
-        stage('Install Dependencies') {
+        stage('Build and Run Docker') {
             steps {
-                sh 'composer install --no-interaction --prefer-dist'
-            }
-        }
-        stage('Prepare Environment') {
-            steps {
-                sh 'cp .env.example .env || true'
-                sh 'php artisan key:generate'
-            }
-        }
-        // Этот этап опционален, уберите если не нужны тесты:
-        // stage('Test') {
-        //     steps {
-        //         sh './vendor/bin/phpunit'
-        //     }
-        // }
-        stage('Deploy') {
-            steps {
-                echo 'Deploy step: добавьте ваш скрипт деплоя/копирования файлов'
+                // Останавливаем и удаляем старые контейнеры (если были)
+                sh 'docker-compose down || true'
+                // Собираем и запускаем проект в фоне
+                sh 'docker-compose up -d --build'
             }
         }
     }
