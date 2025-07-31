@@ -1,109 +1,33 @@
 pipeline {
     agent any
 
-    environment {
-        COMPOSER_CACHE_DIR = "$HOME/.composer"
-    }
-
     stages {
-        stage('Fix workspace permissions before checkout') {
-            steps {
-                // Если у Jenkins нет sudo — эту часть можно убрать, а права выдать вручную
-                sh 'sudo chown -R jenkins:jenkins $WORKSPACE || true'
-                sh 'sudo chmod -R u+rwX $WORKSPACE || true'
-            }
-        }
-
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/Dania409/example-app.git'
+                git branch: 'master', url: 'https://github.com/Dania409/example-app'
             }
         }
-
-        stage('Composer Install') {
+        stage('Install Dependencies') {
             steps {
-                sh 'docker run --rm -v "$PWD:/app" -v "$COMPOSER_CACHE_DIR:/tmp" -w /app composer:latest composer install'
+                sh 'composer install --no-interaction --prefer-dist'
             }
         }
-
-        stage('Copy .env / Настроить окружение') {
+        stage('Prepare Environment') {
             steps {
                 sh 'cp .env.example .env || true'
+                sh 'php artisan key:generate'
             }
         }
-
-        stage('Удалить старую SQLite-базу (если была)') {
+        // Этот этап опционален, уберите если не нужны тесты:
+        // stage('Test') {
+        //     steps {
+        //         sh './vendor/bin/phpunit'
+        //     }
+        // }
+        stage('Deploy') {
             steps {
-                sh 'rm -f database/database.sqlite || true'
+                echo 'Deploy step: добавьте ваш скрипт деплоя/копирования файлов'
             }
-        }
-
-        stage('Generate Application Key') {
-            steps {
-                sh 'docker-compose run --rm app php artisan key:generate'
-            }
-        }
-
-        stage('Set Storage and Bootstrap Permissions') {
-            steps {
-                sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache"'
-            }
-        }
-
-        stage('Set Database Permissions') {
-            steps {
-                sh 'docker-compose run --rm app bash -c "chown -R www-data:www-data database && chmod -R 775 database"'
-            }
-        }
-
-        // === Блок надёжного ожидания MySQL ===
-        stage('Wait for MySQL') {
-            steps {
-                script {
-                    sh '''
-                    tries=60
-                    while [ $tries -gt 0 ]; do
-                        if docker-compose exec -T db mysqladmin ping -h"db" -ularavel_user -psecret --silent; then
-                            echo "✅ MySQL уже готов!"
-                            exit 0
-                        fi
-                        echo "⏳ Ждем MySQL ($tries попыток осталось)..."
-                        sleep 2
-                        tries=$((tries - 1))
-                    done
-                    echo "❌ Не удалось дождаться запуска MySQL в docker-compose."
-                    exit 1
-                    '''
-                }
-            }
-        }
-
-        stage('Run Migrations') {
-            steps {
-                sh 'docker-compose run --rm app php artisan migrate --force'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh 'docker-compose run --rm app php artisan test'
-            }
-        }
-
-        stage('Start Application') {
-            steps {
-                sh 'docker-compose down || true'
-                sh 'docker-compose up --build -d'
-            }
-        }
-    }
-
-    post {
-        success {
-            echo '✅ Приложение успешно развернуто и доступно на http://localhost:8083'
-        }
-        failure {
-            echo '❌ Ошибка при развертывании. Смотрите логи пайплайна.'
         }
     }
 }
