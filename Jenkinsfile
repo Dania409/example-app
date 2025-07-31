@@ -1,10 +1,9 @@
 pipeline {
     agent any
-
     stages {
-        // Можно добавить степ очистки рабочих каталогов перед checkout
-        stage('Cleanup workspace') {
+        stage('Workspace cleanup') {
             steps {
+                // Удалить только те каталоги, которые ломают git checkout
                 sh 'sudo rm -rf storage bootstrap/cache database || true'
             }
         }
@@ -13,16 +12,11 @@ pipeline {
                 git branch: 'master', url: 'https://github.com/Dania409/example-app'
             }
         }
-        stage('Build and Run Docker') {
-            steps {
-                sh 'docker-compose down || true'
-                sh 'docker-compose up -d --build'
-            }
-        }
+        // остальные стадии остаются без изменений...
     }
     post {
         always {
-            // Сброс прав после билда и работы Docker, чтобы в следующем запуске не было проблем
+            // Как и раньше, можно (и нужно) сбрасывать права, чтобы не было проблем в будущем
             sh 'sudo chown -R $(id -u):$(id -g) . || true'
             sh 'chmod -R u+rwX,go+rwX . || true'
         }
