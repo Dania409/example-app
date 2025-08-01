@@ -26,10 +26,10 @@ pipeline {
                     // Создаем .env файл с правильными настройками для Docker
                     sh '''
                         cp .env.example .env || echo "APP_NAME=Laravel" > .env
-                        echo "APP_ENV=local" >> .env
+                        echo "APP_ENV=production" >> .env
                         echo "APP_KEY=" >> .env
                         echo "APP_DEBUG=true" >> .env
-                        echo "APP_URL=http://localhost:8083" >> .env
+                        echo "APP_URL=http://89.169.184.40:8083" >> .env
                         echo "" >> .env
                         echo "DB_CONNECTION=mysql" >> .env
                         echo "DB_HOST=db" >> .env
@@ -90,7 +90,7 @@ pipeline {
                         docker-compose ps
                         
                         # Проверяем доступность приложения
-                        curl -f http://localhost:8083 || echo "Application not yet ready"
+                        curl -f http://89.169.184.40:8083 || echo "Application not yet ready"
                     '''
                 }
             }
@@ -100,8 +100,8 @@ pipeline {
     post {
         success {
             echo 'Laravel application deployed successfully!'
-            echo 'Access your application at: http://localhost:8083'
-            echo 'phpMyAdmin available at: http://localhost:8081'
+            echo 'Access your application at: http://89.169.184.40:8083'
+            echo 'phpMyAdmin available at: http://89.169.184.40:8081'
         }
         failure {
             echo 'Deployment failed! Cleaning up...'
@@ -120,5 +120,4 @@ pipeline {
         }
     }
 }
-      
-    
+
